@@ -1,6 +1,8 @@
 # Configuration for Git installation
 option('perllibdir', type: 'string', value: '',
   description: 'Directory to install perl lib to. Defaults to <datadir>/perl5')
+option('htmldir', type: 'string', value: '',
+  description: 'Directory to install HTML docs to. Defaults to <datadir>/doc/git-doc')
 
 # Configuration for how Git behaves at runtime.
 option('default_pager', type: 'string', value: 'less',
