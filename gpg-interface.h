@@ -3,9 +3,9 @@
 
 struct strbuf;
 
-#define GPG_VERIFY_VERBOSE		1
-#define GPG_VERIFY_RAW			2
-#define GPG_VERIFY_OMIT_STATUS	4
+#define GPG_VERIFY_VERBOSE	(1<<0)
+#define GPG_VERIFY_RAW		(1<<1)
+#define GPG_VERIFY_OMIT_STATUS	(1<<2)
 
 enum signature_trust_level {
 	TRUST_UNDEFINED,
@@ -111,6 +111,7 @@ enum sign_mode {
 	SIGN_VERBATIM,
 	SIGN_WARN_STRIP,
 	SIGN_STRIP,
+	SIGN_STRIP_IF_INVALID,
 };
 
 /*

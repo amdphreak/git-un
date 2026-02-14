@@ -469,7 +469,7 @@ test_expect_success 'access using basic auth with wwwauth header empty continuat
 	EOF
 '
 
-test_expect_success 'access using basic auth with wwwauth header mixed line-endings' '
+test_expect_success 'access using basic auth with wwwauth header mixed continuations' '
 	test_when_finished "per_test_cleanup" &&
 
 	set_credential_reply get <<-EOF &&
@@ -490,7 +490,7 @@ test_expect_success 'access using basic auth with wwwauth header mixed line-endi
 	printf "id=default response=WWW-Authenticate: FooBar param1=\"value1\"\r\n" >>"$CHALLENGE" &&
 	printf "id=default response= \r\n" >>"$CHALLENGE" &&
 	printf "id=default response=\tparam2=\"value2\"\r\n" >>"$CHALLENGE" &&
-	printf "id=default response=WWW-Authenticate: Basic realm=\"example.com\"" >>"$CHALLENGE" &&
+	printf "id=default response=WWW-Authenticate: Basic realm=\"example.com\"\r\n" >>"$CHALLENGE" &&
 
 	test_config_global credential.helper test-helper &&
 	git ls-remote "$HTTPD_URL/custom_auth/repo.git" &&
@@ -603,6 +603,51 @@ test_expect_success 'access using bearer auth with invalid credentials' '
 	wwwauth[]=Bearer authorize_uri="id.example.com" p=1 q=0
 	wwwauth[]=Basic realm="example.com"
 	EOF
+'
+
+test_expect_success 'clone with bearer auth and probe_rpc' '
+	test_when_finished "per_test_cleanup" &&
+	test_when_finished "rm -rf large.git" &&
+
+	# Set up a repository large enough to trigger probe_rpc
+	git init large.git &&
+	(
+		cd large.git &&
+		git config set maintenance.auto false &&
+		git commit --allow-empty --message "initial" &&
+		# Create many refs to trigger probe_rpc, which is called when
+		# the request body is larger than http.postBuffer.
+		#
+		# In the test later, http.postBuffer is set to 70000. Each
+		# "want" line is ~45 bytes, so we need at least 70000/45 = ~1600
+		# refs
+		test_seq -f "create refs/heads/branch-%d @" 2000 |
+		git update-ref --stdin
+	) &&
+	git clone --bare large.git "$HTTPD_DOCUMENT_ROOT_PATH/large.git" &&
+
+	# Clone it through HTTP with a Bearer token
+	set_credential_reply get <<-EOF &&
+	capability[]=authtype
+	authtype=Bearer
+	credential=YS1naXQtdG9rZW4=
+	EOF
+
+	# Bearer token
+	cat >"$HTTPD_ROOT_PATH/custom-auth.valid" <<-EOF &&
+	id=1 creds=Bearer YS1naXQtdG9rZW4=
+	EOF
+
+	cat >"$HTTPD_ROOT_PATH/custom-auth.challenge" <<-EOF &&
+	id=1 status=200
+	id=default response=WWW-Authenticate: Bearer authorize_uri="id.example.com"
+	EOF
+
+	# Set a small buffer to force probe_rpc to be called
+	# Must be > LARGE_PACKET_MAX (65520)
+	test_config_global http.postBuffer 70000 &&
+	test_config_global credential.helper test-helper &&
+	git clone "$HTTPD_URL/custom_auth/large.git" partial-auth-clone 2>clone-error
 '
 
 test_expect_success 'access using three-legged auth' '

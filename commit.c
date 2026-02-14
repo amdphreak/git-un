@@ -191,7 +191,7 @@ void unparse_commit(struct repository *r, const struct object_id *oid)
 
 	if (!c->object.parsed)
 		return;
-	free_commit_list(c->parents);
+	commit_list_free(c->parents);
 	c->parents = NULL;
 	c->object.parsed = 0;
 }
@@ -436,7 +436,7 @@ void release_commit_memory(struct parsed_object_pool *pool, struct commit *c)
 	set_commit_tree(c, NULL);
 	free_commit_buffer(pool, c);
 	c->index = 0;
-	free_commit_list(c->parents);
+	commit_list_free(c->parents);
 
 	c->object.parsed = 0;
 }
@@ -480,7 +480,7 @@ int parse_commit_buffer(struct repository *r, struct commit *item, const void *b
 	 * same error, but that's good, since it lets our caller know
 	 * the result cannot be trusted.
 	 */
-	free_commit_list(item->parents);
+	commit_list_free(item->parents);
 	item->parents = NULL;
 
 	tail += size;
@@ -680,7 +680,7 @@ unsigned commit_list_count(const struct commit_list *l)
 	return c;
 }
 
-struct commit_list *copy_commit_list(const struct commit_list *list)
+struct commit_list *commit_list_copy(const struct commit_list *list)
 {
 	struct commit_list *head = NULL;
 	struct commit_list **pp = &head;
@@ -691,7 +691,7 @@ struct commit_list *copy_commit_list(const struct commit_list *list)
 	return head;
 }
 
-struct commit_list *reverse_commit_list(struct commit_list *list)
+struct commit_list *commit_list_reverse(struct commit_list *list)
 {
 	struct commit_list *next = NULL, *current, *backup;
 	for (current = list; current; current = backup) {
@@ -702,7 +702,7 @@ struct commit_list *reverse_commit_list(struct commit_list *list)
 	return next;
 }
 
-void free_commit_list(struct commit_list *list)
+void commit_list_free(struct commit_list *list)
 {
 	while (list)
 		pop_commit(&list);
@@ -977,7 +977,7 @@ void sort_in_topological_order(struct commit_list **list, enum rev_sort_order so
 		prio_queue_reverse(&queue);
 
 	/* We no longer need the commit list */
-	free_commit_list(orig);
+	commit_list_free(orig);
 
 	pptr = list;
 	*list = NULL;
@@ -1107,7 +1107,7 @@ struct commit *get_fork_point(const char *refname, struct commit *commit)
 
 cleanup_return:
 	free(revs.commit);
-	free_commit_list(bases);
+	commit_list_free(bases);
 	free(full_refname);
 	return ret;
 }
@@ -1315,7 +1315,8 @@ free_return:
 	free(buf);
 }
 
-int check_commit_signature(const struct commit *commit, struct signature_check *sigc)
+int verify_commit_buffer(const char *buffer, size_t size,
+			 struct signature_check *sigc)
 {
 	struct strbuf payload = STRBUF_INIT;
 	struct strbuf signature = STRBUF_INIT;
@@ -1323,7 +1324,8 @@ int check_commit_signature(const struct commit *commit, struct signature_check *
 
 	sigc->result = 'N';
 
-	if (parse_signed_commit(commit, &payload, &signature, the_hash_algo) <= 0)
+	if (parse_buffer_signed_by_header(buffer, size, &payload,
+					  &signature, the_hash_algo) <= 0)
 		goto out;
 
 	sigc->payload_type = SIGNATURE_PAYLOAD_COMMIT;
@@ -1333,6 +1335,17 @@ int check_commit_signature(const struct commit *commit, struct signature_check *
  out:
 	strbuf_release(&payload);
 	strbuf_release(&signature);
+
+	return ret;
+}
+
+int check_commit_signature(const struct commit *commit, struct signature_check *sigc)
+{
+	unsigned long size;
+	const char *buffer = repo_get_commit_buffer(the_repository, commit, &size);
+	int ret = verify_commit_buffer(buffer, size, sigc);
+
+	repo_unuse_commit_buffer(the_repository, commit, buffer);
 
 	return ret;
 }
@@ -1967,4 +1980,32 @@ int run_commit_hook(int editor_is_used, const char *index_file,
 
 	opt.invoked_hook = invoked_hook;
 	return run_hooks_opt(the_repository, name, &opt);
+}
+
+void commit_stack_init(struct commit_stack *stack)
+{
+	stack->items = NULL;
+	stack->nr = stack->alloc = 0;
+}
+
+void commit_stack_grow(struct commit_stack *stack, size_t extra)
+{
+	ALLOC_GROW(stack->items, st_add(stack->nr, extra), stack->alloc);
+}
+
+void commit_stack_push(struct commit_stack *stack, struct commit *commit)
+{
+	commit_stack_grow(stack, 1);
+	stack->items[stack->nr++] = commit;
+}
+
+struct commit *commit_stack_pop(struct commit_stack *stack)
+{
+	return stack->nr ? stack->items[--stack->nr] : NULL;
+}
+
+void commit_stack_clear(struct commit_stack *stack)
+{
+	free(stack->items);
+	commit_stack_init(stack);
 }

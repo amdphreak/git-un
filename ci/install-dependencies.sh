@@ -76,6 +76,17 @@ ubuntu-*|i386/ubuntu-*|debian-*)
 		sudo update-alternatives --set sudo /usr/bin/sudo.ws
 	fi
 
+	# on uutils v0.2.2 from rust-coreutils,
+	#     dirname "foo/."
+	# outputs "." instead of "foo" like it should.
+	# Use GNU coreutils to provide dirname instead.
+	#
+	# See <https://github.com/uutils/coreutils/issues/10508>.
+	if test -x /usr/bin/gnudirname
+	then
+		ln -sfT /usr/bin/gnudirname /usr/bin/dirname
+	fi
+
 	case "$distro" in
 	ubuntu-*)
 		mkdir --parents "$CUSTOM_PATH"
@@ -109,7 +120,7 @@ macos-*)
 	brew link --force gettext
 
 	mkdir -p "$CUSTOM_PATH"
-	wget -q "$P4WHENCE/bin.macosx1015x86_64/helix-core-server.tgz" &&
+	wget -q "$P4WHENCE/bin.macosx12arm64/helix-core-server.tgz" &&
 	tar -xf helix-core-server.tgz -C "$CUSTOM_PATH" p4 p4d &&
 	sudo xattr -d com.apple.quarantine "$CUSTOM_PATH/p4" "$CUSTOM_PATH/p4d" 2>/dev/null || true
 	rm helix-core-server.tgz

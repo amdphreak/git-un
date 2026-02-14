@@ -347,8 +347,8 @@ static int reset_tree(struct object_id *i_tree, int update, int reset)
 
 	memset(&opts, 0, sizeof(opts));
 
-	tree = parse_tree_indirect(i_tree);
-	if (parse_tree(tree))
+	tree = repo_parse_tree_indirect(the_repository, i_tree);
+	if (repo_parse_tree(the_repository, tree))
 		return -1;
 
 	init_tree_desc(t, &tree->object.oid, tree->buffer, tree->size);
@@ -940,8 +940,8 @@ static void diff_include_untracked(const struct stash_info *info, struct diff_op
 	struct unpack_trees_options unpack_tree_opt = { 0 };
 
 	for (size_t i = 0; i < ARRAY_SIZE(oid); i++) {
-		tree[i] = parse_tree_indirect(oid[i]);
-		if (parse_tree(tree[i]) < 0)
+		tree[i] = repo_parse_tree_indirect(the_repository, oid[i]);
+		if (repo_parse_tree(the_repository, tree[i]) < 0)
 			die(_("failed to parse tree"));
 		init_tree_desc(&tree_desc[i], &tree[i]->object.oid,
 			       tree[i]->buffer, tree[i]->size);
@@ -1495,7 +1495,7 @@ static int do_create_stash(const struct pathspec *ps, struct strbuf *stash_msg_b
 		goto done;
 	}
 
-	free_commit_list(parents);
+	commit_list_free(parents);
 	parents = NULL;
 
 	if (include_untracked) {
@@ -1564,7 +1564,7 @@ done:
 	strbuf_release(&commit_tree_label);
 	strbuf_release(&msg);
 	strbuf_release(&untracked_files);
-	free_commit_list(parents);
+	commit_list_free(parents);
 	free(branch_name_buf);
 	return ret;
 }
@@ -2184,7 +2184,7 @@ static int do_import_stash(struct repository *r, const char *rev)
 out:
 	if (this && buffer)
 		repo_unuse_commit_buffer(r, this, buffer);
-	free_commit_list(items);
+	commit_list_free(items);
 	free(msg);
 
 	return res;
@@ -2308,7 +2308,7 @@ static int do_export_stash(struct repository *r,
 	 * but where their first parents form a chain to our original empty
 	 * base commit.
 	 */
-	items = reverse_commit_list(items);
+	items = commit_list_reverse(items);
 	for (cur = items; cur; cur = cur->next) {
 		struct commit_list *parents = NULL;
 		struct commit_list **next = &parents;
@@ -2318,7 +2318,7 @@ static int do_export_stash(struct repository *r,
 		next = commit_list_append(prev, next);
 		next = commit_list_append(stash, next);
 		res = write_commit_with_parents(r, &out, &stash->object.oid, parents);
-		free_commit_list(parents);
+		commit_list_free(parents);
 		if (res)
 			goto out;
 		prev = lookup_commit_reference(r, &out);
@@ -2330,7 +2330,7 @@ static int do_export_stash(struct repository *r,
 		puts(oid_to_hex(&prev->object.oid));
 out:
 	strbuf_release(&revision);
-	free_commit_list(items);
+	commit_list_free(items);
 
 	return res;
 }

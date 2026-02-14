@@ -27,13 +27,14 @@ static GIT_PATH_FUNC(git_path_bisect_first_parent, "BISECT_FIRST_PARENT")
 static GIT_PATH_FUNC(git_path_bisect_run, "BISECT_RUN")
 
 #define BUILTIN_GIT_BISECT_START_USAGE \
-	N_("git bisect start [--term-(new|bad)=<term> --term-(old|good)=<term>]" \
-	   "    [--no-checkout] [--first-parent] [<bad> [<good>...]] [--]" \
-	   "    [<pathspec>...]")
-#define BUILTIN_GIT_BISECT_STATE_USAGE \
-	N_("git bisect (good|bad) [<rev>...]")
+	N_("git bisect start [--term-(bad|new)=<term-new> --term-(good|old)=<term-old>]\n" \
+	   "                 [--no-checkout] [--first-parent] [<bad> [<good>...]] [--] [<pathspec>...]")
+#define BUILTIN_GIT_BISECT_BAD_USAGE \
+	N_("git bisect (bad|new|<term-new>) [<rev>]")
+#define BUILTIN_GIT_BISECT_GOOD_USAGE \
+	N_("git bisect (good|old|<term-old>) [<rev>...]")
 #define BUILTIN_GIT_BISECT_TERMS_USAGE \
-	"git bisect terms [--term-good | --term-bad]"
+	"git bisect terms [--term-(good|old) | --term-(bad|new)]"
 #define BUILTIN_GIT_BISECT_SKIP_USAGE \
 	N_("git bisect skip [(<rev>|<range>)...]")
 #define BUILTIN_GIT_BISECT_NEXT_USAGE \
@@ -41,17 +42,20 @@ static GIT_PATH_FUNC(git_path_bisect_run, "BISECT_RUN")
 #define BUILTIN_GIT_BISECT_RESET_USAGE \
 	N_("git bisect reset [<commit>]")
 #define BUILTIN_GIT_BISECT_VISUALIZE_USAGE \
-	"git bisect visualize"
+	"git bisect (visualize|view)"
 #define BUILTIN_GIT_BISECT_REPLAY_USAGE \
 	N_("git bisect replay <logfile>")
 #define BUILTIN_GIT_BISECT_LOG_USAGE \
 	"git bisect log"
 #define BUILTIN_GIT_BISECT_RUN_USAGE \
 	N_("git bisect run <cmd> [<arg>...]")
+#define BUILTIN_GIT_BISECT_HELP_USAGE \
+	"git bisect help"
 
 static const char * const git_bisect_usage[] = {
 	BUILTIN_GIT_BISECT_START_USAGE,
-	BUILTIN_GIT_BISECT_STATE_USAGE,
+	BUILTIN_GIT_BISECT_BAD_USAGE,
+	BUILTIN_GIT_BISECT_GOOD_USAGE,
 	BUILTIN_GIT_BISECT_TERMS_USAGE,
 	BUILTIN_GIT_BISECT_SKIP_USAGE,
 	BUILTIN_GIT_BISECT_NEXT_USAGE,
@@ -60,6 +64,7 @@ static const char * const git_bisect_usage[] = {
 	BUILTIN_GIT_BISECT_REPLAY_USAGE,
 	BUILTIN_GIT_BISECT_LOG_USAGE,
 	BUILTIN_GIT_BISECT_RUN_USAGE,
+	BUILTIN_GIT_BISECT_HELP_USAGE,
 	NULL
 };
 
@@ -358,10 +363,7 @@ static int check_and_set_terms(struct bisect_terms *terms, const char *cmd)
 	return 0;
 }
 
-static int inc_nr(const char *refname UNUSED,
-		  const char *referent UNUSED,
-		  const struct object_id *oid UNUSED,
-		  int flag UNUSED, void *cb_data)
+static int inc_nr(const struct reference *ref UNUSED, void *cb_data)
 {
 	unsigned int *nr = (unsigned int *)cb_data;
 	(*nr)++;
@@ -549,12 +551,11 @@ finish:
 	return res;
 }
 
-static int add_bisect_ref(const char *refname, const char *referent UNUSED, const struct object_id *oid,
-			  int flags UNUSED, void *cb)
+static int add_bisect_ref(const struct reference *ref, void *cb)
 {
 	struct add_bisect_ref_data *data = cb;
 
-	add_pending_oid(data->revs, refname, oid, data->object_flags);
+	add_pending_oid(data->revs, ref->name, ref->oid, data->object_flags);
 
 	return 0;
 }
@@ -1165,12 +1166,9 @@ static int bisect_visualize(struct bisect_terms *terms, int argc,
 	return run_command(&cmd);
 }
 
-static int get_first_good(const char *refname UNUSED,
-			  const char *referent UNUSED,
-			  const struct object_id *oid,
-			  int flag UNUSED, void *cb_data)
+static int get_first_good(const struct reference *ref, void *cb_data)
 {
-	oidcpy(cb_data, oid);
+	oidcpy(cb_data, ref->oid);
 	return 1;
 }
 

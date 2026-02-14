@@ -75,7 +75,7 @@ static void sort_revindex(struct revindex_entry *entries, unsigned n, off_t max)
 	for (bits = 0; max >> bits; bits += DIGIT_SIZE) {
 		unsigned i;
 
-		memset(pos, 0, BUCKETS * sizeof(*pos));
+		MEMZERO_ARRAY(pos, BUCKETS);
 
 		/*
 		 * We want pos[i] to store the index of the last element that
@@ -544,7 +544,7 @@ static int midx_key_to_pack_pos(struct multi_pack_index *m,
 				struct midx_pack_key *key,
 				uint32_t *pos)
 {
-	uint32_t *found;
+	const uint32_t *found;
 
 	if (key->pack >= m->num_packs + m->num_packs_in_base)
 		BUG("MIDX pack lookup out of bounds (%"PRIu32" >= %"PRIu32")",

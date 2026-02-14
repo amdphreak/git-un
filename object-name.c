@@ -116,7 +116,7 @@ static void find_short_object_filename(struct disambiguate_state *ds)
 	struct odb_source *source;
 
 	for (source = ds->repo->objects->sources; source && !ds->ambiguous; source = source->next)
-		oidtree_each(odb_loose_cache(source, &ds->bin_pfx),
+		oidtree_each(odb_source_loose_cache(source, &ds->bin_pfx),
 				&ds->bin_pfx, ds->len, match_prefix, ds);
 }
 
@@ -449,7 +449,7 @@ static int show_ambiguous_object(const struct object_id *oid, void *data)
 	} else if (type == OBJ_TAG) {
 		struct tag *tag = lookup_tag(ds->repo, oid);
 
-		if (!parse_tag(tag) && tag->tag) {
+		if (!parse_tag(ds->repo, tag) && tag->tag) {
 			/*
 			 * TRANSLATORS: This is a line of ambiguous
 			 * tag object output. E.g.:
@@ -1281,7 +1281,7 @@ static int peel_onion(struct repository *r, const char *name, int len,
 		commit_list_insert((struct commit *)o, &list);
 		ret = get_oid_oneline(r, prefix, oid, list);
 
-		free_commit_list(list);
+		commit_list_free(list);
 		free(prefix);
 		return ret;
 	}
@@ -1446,18 +1446,16 @@ struct handle_one_ref_cb {
 	struct commit_list **list;
 };
 
-static int handle_one_ref(const char *path, const char *referent UNUSED, const struct object_id *oid,
-			  int flag UNUSED,
-			  void *cb_data)
+static int handle_one_ref(const struct reference *ref, void *cb_data)
 {
 	struct handle_one_ref_cb *cb = cb_data;
 	struct commit_list **list = cb->list;
-	struct object *object = parse_object(cb->repo, oid);
+	struct object *object = parse_object(cb->repo, ref->oid);
 	if (!object)
 		return 0;
 	if (object->type == OBJ_TAG) {
-		object = deref_tag(cb->repo, object, path,
-				   strlen(path));
+		object = deref_tag(cb->repo, object, ref->name,
+				   strlen(ref->name));
 		if (!object)
 			return 0;
 	}
@@ -1625,7 +1623,7 @@ int repo_get_oid_mb(struct repository *r,
 	if (!two)
 		return -1;
 	if (repo_get_merge_bases(r, one, two, &mbs) < 0) {
-		free_commit_list(mbs);
+		commit_list_free(mbs);
 		return -1;
 	}
 	if (!mbs || mbs->next)
@@ -1634,7 +1632,7 @@ int repo_get_oid_mb(struct repository *r,
 		st = 0;
 		oidcpy(oid, &mbs->item->object.oid);
 	}
-	free_commit_list(mbs);
+	commit_list_free(mbs);
 	return st;
 }
 
@@ -1758,7 +1756,7 @@ int repo_interpret_branch_name(struct repository *r,
 			       struct strbuf *buf,
 			       const struct interpret_branch_name_options *options)
 {
-	char *at;
+	const char *at;
 	const char *start;
 	int len;
 
@@ -2054,7 +2052,7 @@ static enum get_oid_result get_oid_with_context_1(struct repository *repo,
 			refs_head_ref(get_main_ref_store(repo), handle_one_ref, &cb);
 			ret = get_oid_oneline(repo, name + 2, oid, list);
 
-			free_commit_list(list);
+			commit_list_free(list);
 			return ret;
 		}
 		if (namelen < 3 ||

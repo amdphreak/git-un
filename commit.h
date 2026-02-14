@@ -186,12 +186,31 @@ struct commit_list *commit_list_insert_by_date(struct commit *item,
 void commit_list_sort_by_date(struct commit_list **list);
 
 /* Shallow copy of the input list */
-struct commit_list *copy_commit_list(const struct commit_list *list);
+struct commit_list *commit_list_copy(const struct commit_list *list);
 
 /* Modify list in-place to reverse it, returning new head; list will be tail */
-struct commit_list *reverse_commit_list(struct commit_list *list);
+struct commit_list *commit_list_reverse(struct commit_list *list);
 
-void free_commit_list(struct commit_list *list);
+void commit_list_free(struct commit_list *list);
+
+/*
+ * Deprecated compatibility functions for `struct commit_list`, to be removed
+ * once Git 2.53 is released.
+ */
+static inline struct commit_list *copy_commit_list(struct commit_list *l)
+{
+	return commit_list_copy(l);
+}
+
+static inline struct commit_list *reverse_commit_list(struct commit_list *l)
+{
+	return commit_list_reverse(l);
+}
+
+static inline void free_commit_list(struct commit_list *l)
+{
+	commit_list_free(l);
+}
 
 struct rev_info; /* in revision.h, it circularly uses enum cmit_fmt */
 
@@ -333,6 +352,13 @@ int remove_signature(struct strbuf *buf);
  */
 int check_commit_signature(const struct commit *commit, struct signature_check *sigc);
 
+/*
+ * Same as check_commit_signature() but accepts a commit buffer and
+ * its size, instead of a `struct commit *`.
+ */
+int verify_commit_buffer(const char *buffer, size_t size,
+			 struct signature_check *sigc);
+
 /* record author-date for each commit object */
 struct author_date_slab;
 void record_author_date(struct author_date_slab *author_date,
@@ -373,5 +399,17 @@ int parse_buffer_signed_by_header(const char *buffer,
 				  struct strbuf *signature,
 				  const struct git_hash_algo *algop);
 int add_header_signature(struct strbuf *buf, struct strbuf *sig, const struct git_hash_algo *algo);
+
+struct commit_stack {
+	struct commit **items;
+	size_t nr, alloc;
+};
+#define COMMIT_STACK_INIT { 0 }
+
+void commit_stack_init(struct commit_stack *);
+void commit_stack_grow(struct commit_stack *, size_t);
+void commit_stack_push(struct commit_stack *, struct commit *);
+struct commit *commit_stack_pop(struct commit_stack *);
+void commit_stack_clear(struct commit_stack *);
 
 #endif /* COMMIT_H */

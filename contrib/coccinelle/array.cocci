@@ -101,3 +101,47 @@ expression dst, src, n;
 -ALLOC_ARRAY(dst, n);
 -COPY_ARRAY(dst, src, n);
 +DUP_ARRAY(dst, src, n);
+
+@@
+type T;
+T *ptr;
+expression n;
+@@
+- memset(ptr, \( 0 \| '\0' \), \( (n) \| n \) * \( sizeof(T)
+-                                               \| sizeof(ptr[...])
+-                                               \| sizeof(*ptr)
+-                                               \) )
++ MEMZERO_ARRAY(ptr, n)
+
+@@
+type T;
+T *ptr;
+expression n;
+@@
+- memset(ptr, \( 0 \| '\0' \), \( sizeof(T)
+-                              \| sizeof(ptr[...])
+-                              \| sizeof(*ptr)
+-                              \) * \( (n) \| n \) )
++ MEMZERO_ARRAY(ptr, n)
+
+@@
+type T;
+T[] ptr;
+expression n;
+@@
+- memset(ptr, \( 0 \| '\0' \), \( (n) \| n \) * \( sizeof(T)
+-                                               \| sizeof(ptr[...])
+-                                               \| sizeof(*ptr)
+-                                               \) )
++ MEMZERO_ARRAY(ptr, n)
+
+@@
+type T;
+T[] ptr;
+expression n;
+@@
+- memset(ptr, \( 0 \| '\0' \), \( sizeof(T)
+-                              \| sizeof(ptr[...])
+-                              \| sizeof(*ptr)
+-                              \) * \( (n) \| n \) )
++ MEMZERO_ARRAY(ptr, n)
