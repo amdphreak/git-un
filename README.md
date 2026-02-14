@@ -3,9 +3,29 @@
 Git - fast, scalable, distributed revision control system
 =========================================================
 
+# git-unfuckified
+
+This is a fork of the original Git project focused on improving the user experience and command-line interface syntax. The goal is to make Git more intuitive and reduce the cognitive overhead required to use it effectively.
+
+## About git-unfuckified
+
 Git is a fast, scalable, distributed revision control system with an
 unusually rich command set that provides both high-level operations
 and full access to internals.
+
+**git-unfuckified** aims to improve the Git experience by:
+
+- Providing more intuitive command aliases (`gitu` instead of `git`)
+- Simplifying common workflows with clearer syntax
+- Adding better error messages and guidance
+- Implementing safety rails to prevent common mistakes
+- Creating a more consistent mental model for version control
+
+## Getting Started
+
+This fork includes the original Git functionality plus the new `gitu` command with improved syntax. See the `gitu` documentation below for details on the enhanced interface.
+
+### Original Git Documentation
 
 Git is an Open Source project covered by the GNU General Public
 License version 2 (some parts of it are under different licenses,
