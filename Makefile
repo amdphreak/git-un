@@ -1032,6 +1032,9 @@ include config.mak.uname
 -include config.mak.autogen
 -include config.mak
 
+# Include gitu-specific build rules
+include Makefile.gitu
+
 ifdef DEVELOPER
 include config.mak.dev
 endif

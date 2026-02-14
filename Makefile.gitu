@@ -1,0 +1,35 @@
+# Makefile for gitu - Git Unfuckified CLI
+# This builds the gitu command as part of the git build system
+
+GITU_OBJS = gitu.o shim_manager.o tui_manager.o
+GITU_PROGRAM = gitu
+
+# Add gitu to the built programs
+PROGRAMS += $(GITU_PROGRAM)
+
+# Build rules for gitu
+$(GITU_PROGRAM): $(GITU_OBJS) $(LIB_FILE)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(GITU_OBJS) $(LIBS)
+
+# Dependencies
+gitu.o: gitu.c git-compat-util.h strbuf.h run-command.h parse-options.h builtin.h cache.h shim_manager.h
+shim_manager.o: shim_manager.c git-compat-util.h strbuf.h run-command.h shim_manager.h
+tui_manager.o: tui_manager.c git-compat-util.h strbuf.h run-command.h shim_manager.h
+
+# Optional curses support for TUI
+ifdef HAVE_CURSES
+	CFLAGS += -DHAVE_CURSES
+	EXTLIBS += -lncurses -lmenu
+endif
+
+# Install gitu alongside git
+install: $(GITU_PROGRAM)
+	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(gitexecdir_SQ)'
+	$(INSTALL) -m 755 $(GITU_PROGRAM) '$(DESTDIR_SQ)$(gitexecdir_SQ)/$(GITU_PROGRAM)'
+
+# Clean gitu
+clean: clean-gitu
+clean-gitu:
+	$(RM) $(GITU_PROGRAM) $(GITU_OBJS)
+
+.PHONY: clean-gitu
